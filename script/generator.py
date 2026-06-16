@@ -278,7 +278,7 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
     )
 
     arrival_act = arrival_est + np.round(delay).astype(int)
-    arrival_act = np.clip(arrival_act, 5, 240)
+    arrival_act = np.clip(arrival_act, 5, 400)
 
 
     idle_base = rng.gamma(
