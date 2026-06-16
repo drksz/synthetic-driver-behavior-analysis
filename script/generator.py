@@ -302,6 +302,23 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
     idle_time = np.clip(idle_time, 0.5, 45)
 
     arrival_act = np.round((arrival_est + delay + idle_time), 3 )
+
+    # defined max speed limits for each vehicle type 
+    max_speed = pd.Series(vehicle_type).map({
+        'MOTORCYCLE':60,
+        'VAN':50,
+        'TRUCK': 40
+    })
+
+    # here, actual arrival time is constrained, ensuring that there is enough time to realistically
+    # travel the delivery distance including the time spent on idle
+
+    min_moving_time = (delivery_distance / max_speed) * 60
+
+    arrival_act = np.maximum(
+        arrival_act, min_moving_time + idle_time
+    )
+
     arrival_act = np.clip(arrival_act, 5, 400)
 
 
