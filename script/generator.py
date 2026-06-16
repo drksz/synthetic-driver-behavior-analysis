@@ -239,7 +239,7 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
         * priority_multiplier
     )
 
-    arrival_est = np.round(np.clip(arrival_est, 8, 140)).astype(int)
+    arrival_est = np.round(np.clip(arrival_est, 8, 140), 3).astype(float)
 
     driver_efficiency = driver_sample['efficiency'].to_numpy()
     violations = driver_sample['traffic_violations'].to_numpy()
@@ -279,17 +279,17 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
 
 
     idle_base = rng.gamma(
-        shape=2.0,
-        scale=2.5, 
+        shape=3.5,
+        scale=3.0, 
         size=chunk_size
     )
 
     traffic_idle = (
-        (traffic_multiplier - 1) * 6
+        (traffic_multiplier - 1) * 12
     )
 
     weather_idle = (
-        (weather_multiplier - 1) * 5
+        (weather_multiplier - 1) * 10
     )
 
     idle_time = (
@@ -299,9 +299,9 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
         + rng.normal(0, 1.2, chunk_size)
     )
 
-    idle_time = np.clip(idle_time, 0, 35)
+    idle_time = np.clip(idle_time, 0.5, 45)
 
-    arrival_act = arrival_est + np.round(delay + idle_time).astype(int)
+    arrival_act = np.round((arrival_est + delay + idle_time), 3 )
     arrival_act = np.clip(arrival_act, 5, 400)
 
 
@@ -381,7 +381,7 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
         'delivery_distance': delivery_distance,
         'idle': np.round(idle_time, 2),
         'arrival_est': arrival_est,
-        'arrival_act': arrival_act.astype(int),
+        'arrival_act': arrival_act,
         'attitude': clamp_rating(attitude),
         'pkg_care': clamp_rating(pkg_care),
         'responsiveness': clamp_rating(responsiveness),
