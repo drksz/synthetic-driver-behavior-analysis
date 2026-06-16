@@ -186,11 +186,60 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
         'RAIN': 1.18
     }).to_numpy()
 
+
+    vehicle_type = rng.choice(
+        ['MOTORCYCLE', 'VAN', 'TRUCK'],
+        size=chunk_size,
+        p=[0.70, 0.20, 0.10]
+    )
+
+    base_distance = rng.lognormal(
+        mean=1.9, 
+        sigma=0.55, 
+        size=chunk_size
+    )
+
+    vehicle_multiplier = pd.Series(vehicle_type).map({
+        'MOTORCYCLE':0.90,
+        'VAN': 1.10,
+        'TRUCK': 1.35
+    }).to_numpy()
+
+    delivery_distance = np.round(
+        np.clip(
+            base_distance * vehicle_multiplier,
+            1.0,
+            45.0
+        ),
+        2
+    )
+
+    distance_multiplier = 0.70 + (delivery_distance/20)
+
+    order_priority = rng.choice(
+        ['STD','EXP'],
+        size=chunk_size,
+        p=[0.65, 0.35]
+    )
+
+    priority_multiplier = pd.Series(order_priority).map({
+        'STD':1.0,
+        'EXP':0.85
+    }).to_numpy()
+
     # ETA simulations are drawn from a log-normal distribution since it introduces
     # a right skew and prevents time values from taking on values < 0
     base_eta = rng.lognormal(mean=3.45, sigma=0.42, size=chunk_size)
-    arrival_est = base_eta * traffic_multiplier * weather_multiplier
-    arrival_est = np.round(np.clip(arrival_est, 8, 150)).astype(int)
+
+    arrival_est = (
+        base_eta
+        *distance_multiplier
+        * traffic_multiplier
+        * weather_multiplier
+        * priority_multiplier
+    )
+
+    arrival_est = np.round(np.clip(arrival_est, 8, 240)).astype(int)
 
     driver_efficiency = driver_sample['efficiency'].to_numpy()
     violations = driver_sample['traffic_violations'].to_numpy()
@@ -229,7 +278,31 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
     )
 
     arrival_act = arrival_est + np.round(delay).astype(int)
-    arrival_act = np.clip(arrival_act, 5, 260)
+    arrival_act = np.clip(arrival_act, 5, 400)
+
+
+    idle_base = rng.gamma(
+        shape=2.0,
+        scale=2.5, 
+        size=chunk_size
+    )
+
+    traffic_idle = (
+        (traffic_multiplier - 1) * 6
+    )
+
+    weather_idle = (
+        (weather_multiplier - 1) * 5
+    )
+
+    idle_time = (
+        idle_base
+        + traffic_idle
+        + weather_idle
+        + rng.normal(0, 1.2, chunk_size)
+    )
+
+    idle_time = np.clip(idle_time, 0, 35)
 
 
     lateness = arrival_act - arrival_est
@@ -303,6 +376,10 @@ def generate_chunk(chunk_start:int, chunk_size: int, drivers: pd.DataFrame, weat
         'delivery_id': generate_delivery_ids(chunk_start+1, chunk_size),
         'driver_id': driver_sample['driver_id'],
         'date': dates.strftime('%Y-%m-%d'),
+        'priority': order_priority,
+        'vehicle_type': vehicle_type,
+        'delivery_distance': delivery_distance,
+        'idle': np.round(idle_time, 2),
         'arrival_est': arrival_est,
         'arrival_act': arrival_act.astype(int),
         'attitude': clamp_rating(attitude),
@@ -343,13 +420,21 @@ def validate_dataset(df):
     print("\nTRAFFIC DISTRIBUTION")
     print(df["traffic_cond"].value_counts(normalize=True).round(3))
 
+    print("\nVEHICLE TYPE DISTRIBUTION")
+    print(df["vehicle_type"].value_counts(normalize=True).round(3))
+
+    print("\nORDER PRIORITY DISTRIBUTION")
+    print(df["priority"].value_counts(normalize=True).round(3))
+
     print("\nNUMERIC SUMMARY")
     print(df.describe())
 
     print("\nCORRELATIONS")
     corr_cols = [
+        "delivery_distance",
         "arrival_est",
         "arrival_act",
+        "idle",
         "attitude",
         "pkg_care",
         "responsiveness",
@@ -360,6 +445,12 @@ def validate_dataset(df):
     delay = df["arrival_act"] - df["arrival_est"]
     print("\nDELAY SUMMARY")
     print(delay.describe().round(2))
+
+    print("\nDISTANCE SUMMARY")
+    print(df["delivery_distance"].describe().round(2))
+
+    print("\nIDLE TIME SUMMARY")
+    print(df["idle"].describe().round(2))
 
     print("\nOUTLIER RATE: delay > 60 minutes")
     print(round((delay > 60).mean(), 4))
