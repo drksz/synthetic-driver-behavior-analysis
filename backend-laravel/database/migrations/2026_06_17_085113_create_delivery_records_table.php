@@ -18,20 +18,24 @@ return new class extends Migration
             $table->string('driver_id');
 
             $table->date('date');
+            $table->string('weekday');
             $table->string('priority');
             $table->string('vehicle_type');
             $table->float('delivery_distance');
             $table->float('idle');
             $table->float('arrival_est');
             $table->float('arrival_act');
+            $table->float('delay');
+            $table->boolean('on_time');
+            $table->float('est_veh_spd');
             $table->float('attitude');
             $table->float('pkg_care');
             $table->float('responsiveness');
             $table->float('delivery_spd');
             $table->string('weather');
             $table->string('traffic_cond');
-            $table->float('delay');
-            $table->boolean('on_time');
+            
+            
 
             $table->timestamps();
         });
