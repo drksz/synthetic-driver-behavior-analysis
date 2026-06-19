@@ -65,6 +65,7 @@ export default function DashboardPage() {
     if (!data) return <main className="p-8">Loading dashboard...</main>;
 
     const gridColor = "#1d2838";
+    const tickColor = "#cbd5e1";
 
     const chartOptions = {
         responsive: true,
@@ -72,66 +73,87 @@ export default function DashboardPage() {
         plugins: {
             legend: {
                 labels: {
-                    color: "#cbd5e1",
+                    color: tickColor,
                 },
             },
         },
         scales: {
             x: {
-                ticks: { color: "#cbd5e1" },
+                ticks: { color: tickColor },
             },
             y: {
-                ticks: { color: "#cbd5e1" },
+                ticks: { color: tickColor },
                 grid: { color: gridColor },
             },
         },
     };
 
-    const noLegendChartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-            display: false,
-            },
-        },
+    const barChartOptions = {
+        ...chartOptions,
         scales: {
-            x: {
-            ticks: { color: "#cbd5e1" },
-            grid: { color: gridColor },
-            },
+            ...chartOptions.scales,
             y: {
-            ticks: { color: "#cbd5e1" },
-            grid: { color: gridColor },
+                'title': {
+                    display: true,
+                    text: 'mins.',
+                    font: { weight: 'bold', size: 13 },
+                    color: tickColor,
+                },
+                ticks: { 
+                    color: tickColor, 
+                    stepSize: 5,
+                },
+                grid: { color: gridColor },
             },
         },
-    };
-
-    const customGridlineChartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
         plugins: {
+            ...chartOptions.plugins,
             legend: {
+                display:false,
                 labels: {
-                    color: "#cbd5e1",
+                    color: tickColor,
                 },
-            },
-        },
-        scales: {
-            x: {
-                ticks: { color: "#cbd5e1" },
-            },
-            y: {
-                ticks: { color: "#cbd5e1" },
-                grid: { color: gridColor },
             },
         },
     };
 
 
-    const horizontalBarChartOptions  ={
-        ...noLegendChartOptions,
+    const timeSeriesChartOptions = {
+        ...chartOptions, 
+        scales: {
+            ...chartOptions.scales,
+            y: {
+                title: {
+                    display: true,
+                    text: 'mins.',
+                    color: tickColor,
+                    font: { weight: 'bold', size: 13 },
+                },
+                ticks: { color: tickColor },
+                grid: { color: gridColor },
+            },
+        },
+        plugins: {
+            legend: {
+                display: false,
+            },
+        },
+    };
+
+    const horizontalBarChartOptions = {
+        ...barChartOptions,
         indexAxis: "y",
+        scales: {
+            ...barChartOptions.scales,
+            x: {
+                ticks: { stepSize: 0.5 },
+            },
+            y: {
+                title: { display: false },
+                ticks: { color: tickColor },
+                grid: { color: gridColor },
+            },
+        },
     };
 
     const doughnutOptions = {
@@ -139,9 +161,11 @@ export default function DashboardPage() {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-            labels: {
-                color: "#cbd5e1",
-            },
+                labels: {
+                    color: tickColor,
+                },
+                position: 'bottom',
+                align: 'center',
             },
         },
     };
@@ -156,14 +180,14 @@ export default function DashboardPage() {
             <section className="grid grid-cols-3 gap-4">
 
                 <KpiCard title="Total Deliveries" value={data.kpis.total_deliveries} />
-                <KpiCard title="Overall Median Delay" value={`${data.kpis.median_delay_mins} mins`} />
+                <KpiCard title="Overall Median Delay" value={`${Number(data.kpis.median_delay_mins).toFixed(2)} mins`} />
                 <KpiCard title="On-Time Percentage" value={`${data.kpis.on_time_percentage}%`} />
 
 
             
                 <ChartCard title="Vehicle Type Proportion" className="h-[370px]">
                     <div className="flex h-full items-center justify-center">
-                        <div className="h-[300px] w-[300px]">
+                        <div className="h-[310px] w-[390px]">
 
                             <Doughnut
                                 options={doughnutOptions}
@@ -189,9 +213,9 @@ export default function DashboardPage() {
                 </ChartCard>
 
                 
-                <ChartCard title="Median Delay by Weekday (mins.)" className="h-[370px]">
+                <ChartCard title="Median Delay by Weekday" className="h-[370px]">
                 <Bar
-                    options={noLegendChartOptions}
+                    options={barChartOptions}
                     data={{
                         labels: data.weekdayDelay.map((item) => item.weekday),
                         datasets: [
@@ -206,9 +230,9 @@ export default function DashboardPage() {
                 </ChartCard>
 
 
-                <ChartCard title="Median Delay by Weather (mins.)" className="h-[370px]">
+                <ChartCard title="Median Delay by Weather" className="h-[370px]">
                 <Bar
-                    options={noLegendChartOptions}
+                    options={barChartOptions}
                     data={{
                         labels: data.weatherStats.map((item) => item.weather),
                         datasets: [
@@ -230,7 +254,7 @@ export default function DashboardPage() {
                     <div className="grid min-w-0 min-h-0 grid-rows-2 gap-4">
                         <ChartCard title="Weekly Total Delay" className="min-h-0">
                             <Line
-                                options={customGridlineChartOptions}
+                                options={timeSeriesChartOptions}
                                 data={{
                                     labels: data.weekTotalDelay.map((item) =>
                                         new Date(item.week_start).toLocaleDateString()
@@ -251,7 +275,7 @@ export default function DashboardPage() {
 
                         <ChartCard title="Monthly Total Delay" className="min-h-0">
                             <Line
-                                options={chartOptions}
+                                options={timeSeriesChartOptions}
                                 data={{
                                     labels: data.monthTotalDelay.map((item) =>
                                         new Date(item.month_start).toLocaleDateString()
@@ -302,9 +326,9 @@ export default function DashboardPage() {
 
 function KpiCard({ title,value }) {
     return (
-        <div className="rounded-xl bg-slate-900 p-6 shadow">
-            <p className="text-sm text-slate-400">{title}</p>
-            <h2 className="mt-2 text-3xl font-bold">{value}</h2>
+        <div className="flex flex-col justify-center items-end rounded-xl bg-slate-900 p-6 shadow">
+            <p className="order-1 text-sm text-slate-400">{title}</p>
+            <h2 className="order-2 mt-2 text-3xl font-bold">{value}</h2>
         </div>
     );
 }
